@@ -8,7 +8,7 @@ bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    bot.reply_to(message, "👋 Welcome! YouTube ya Instagram ka link bhejein, video aawaz ke sath download ho jayegi.")
+    bot.reply_to(message, "👋 Welcome! Instagram ya kisi aur platform ka link bhejein, video download ho jayegi.\n\n❌ *Note:* YouTube links allowed nahi hain.")
 
 @bot.message_handler(func=lambda message: True)
 def download_media(message):
@@ -18,11 +18,15 @@ def download_media(message):
         bot.reply_to(message, "❌ Kripya ek valid URL (link) bhejein.")
         return
 
-    msg = bot.reply_to(message, "🔍 Downloading media... Kripya intezaار karein.")
+    # YouTube ko block karne ki condition
+    if "youtube.com" in url or "youtu.be" in url:
+        bot.reply_to(message, "❌ YouTube videos is bot se download karna band kar diya gaya hai. Kripya Instagram ya doosra link bhejein.")
+        return
 
-    # FFmpeg ke bina audio/video download karne ke liye format option
+    msg = bot.reply_to(message, "🔍 Downloading media... Kripya intezaar karein.")
+
     ydl_opts = {
-        'format': 'best[height<=720]',  # Yeh single file download karega jisme aawaz sath hogi
+        'format': 'best',
         'outtmpl': 'downloaded_video.%(ext)s',
         'noplaylist': True,
         'http_headers': {
@@ -40,7 +44,7 @@ def download_media(message):
 
         # Video file ko Telegram par bhejna
         with open(filename, 'rb') as video:
-            bot.send_video(message.chat.id, video, caption="✅ Video downloaded successfully with audio!")
+            bot.send_video(message.chat.id, video, caption="✅ Video downloaded successfully!")
         
         bot.delete_message(message.chat.id, msg.message_id)
 
