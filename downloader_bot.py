@@ -1,70 +1,56 @@
+import os
 import telebot
 import yt_dlp
-import os
-import uuid
-from flask import Flask
-from threading import Thread
 
+# Aapka naya Telegram Bot Token yahan set hai
 TOKEN = "8852793555:AAHeGoB66uD-R0_J37z4KOsBsunag2_Xwd4"
 bot = telebot.TeleBot(TOKEN)
 
-# Web server taaki Render ka Port Binding error fix ho jaye
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot is running 24/7!"
-
-def run_web():
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
-
-if not os.path.exists('downloads'):
-    os.makedirs('downloads')
-
-def download_media(url):
-    unique_name = str(uuid.uuid4())
-    ydl_opts = {
-        'format': 'best',
-        'outtmpl': f'downloads/{unique_name}.%(ext)s',
-        'quiet': True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        return ydl.prepare_filename(info)
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, f"👋 Hi {message.from_user.first_name}!\n\nMain 24/7 Cloud par live hoon. Koi bhi link bhejo, download karke dunga.")
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "👋 Welcome! YouTube ya Instagram ka link bhejein, video download ho jayegi.")
 
 @bot.message_handler(func=lambda message: True)
-def handle_link(message):
+def download_media(message):
     url = message.text.strip()
+    
     if not url.startswith("http"):
+        bot.reply_to(message, "❌ Kripya ek valid URL (link) bhejein.")
         return
 
-    wait_msg = bot.reply_to(message, "⏳ Downloading... thoda rukiye.")
-    
-    try:
-        file_path = download_media(url)
-        with open(file_path, 'rb') as f:
-            if file_path.endswith(('.mp4', '.mkv', '.webm')):
-                bot.send_video(message.chat.id, f, caption="✅ Downloaded successfully!")
-            else:
-                bot.send_photo(message.chat.id, f, caption="✅ Downloaded successfully!")
-        os.remove(file_path)
-        bot.delete_message(message.chat.id, wait_msg.message_id)
-    except Exception as e:
-        try:
-            bot.delete_message(message.chat.id, wait_msg.message_id)
-        except:
-            pass
-        bot.reply_to(message, f"❌ Error: {e}")
+    msg = bot.reply_to(message, "🔍 Downloading media... Kripya intezaar karein.")
 
-if __name__ == "__main__":
-    # Web server ko background mein chalana
-    t = Thread(target=run_web)
-    t.start()
-    
-    print("🚀 Cloud Bot is starting...")
-    bot.infinity_polling(skip_pending=True)
-  
+    # YouTube bot detection bypass options
+    ydl_opts = {
+        'format': 'best',
+        'outtmpl': 'downloaded_video.%(ext)s',
+        'noplaylist': True,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
+        }
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+
+        # Video file ko Telegram par bhejna
+        with open(filename, 'rb') as video:
+            bot.send_video(message.chat.id, video, caption="✅ Video downloaded successfully!")
+        
+        bot.delete_message(message.chat.id, msg.message_id)
+
+        # Download hone ke baad local file delete karna
+        if os.path.exists(filename):
+            os.remove(filename)
+
+    except Exception as e:
+        print(e)
+        bot.edit_message_text(f"❌ Error: {str(e)}", message.chat.id, msg.message_id)
+
+print("Bot is running...")
+bot.infinity_polling()
