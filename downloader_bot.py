@@ -2,13 +2,13 @@ import os
 import telebot
 import yt_dlp
 
-# Aapka naya Telegram Bot Token yahan set hai
+# Aapka Telegram Bot Token
 TOKEN = "8852793555:AAHeGoB66uD-R0_J37z4KOsBsunag2_Xwd4"
 bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    bot.reply_to(message, "👋 Welcome! YouTube ya Instagram ka link bhejein, video download ho jayegi.")
+    bot.reply_to(message, "👋 Welcome! YouTube ya Instagram ka link bhejein, video aawaz ke sath download ho jayegi.")
 
 @bot.message_handler(func=lambda message: True)
 def download_media(message):
@@ -18,11 +18,11 @@ def download_media(message):
         bot.reply_to(message, "❌ Kripya ek valid URL (link) bhejein.")
         return
 
-    msg = bot.reply_to(message, "🔍 Downloading media... Kripya intezaar karein.")
+    msg = bot.reply_to(message, "🔍 Downloading media... Kripya intezaار karein.")
 
-    # YouTube bot detection bypass options
+    # FFmpeg ke bina audio/video download karne ke liye format option
     ydl_opts = {
-        'format': 'best',
+        'format': 'best[height<=720]',  # Yeh single file download karega jisme aawaz sath hogi
         'outtmpl': 'downloaded_video.%(ext)s',
         'noplaylist': True,
         'http_headers': {
@@ -40,7 +40,7 @@ def download_media(message):
 
         # Video file ko Telegram par bhejna
         with open(filename, 'rb') as video:
-            bot.send_video(message.chat.id, video, caption="✅ Video downloaded successfully!")
+            bot.send_video(message.chat.id, video, caption="✅ Video downloaded successfully with audio!")
         
         bot.delete_message(message.chat.id, msg.message_id)
 
